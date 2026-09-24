@@ -50,9 +50,14 @@ async def handle_webhook(
 
     token = os.environ.get("GITHUB_PAT")
     openai_api_key = os.environ.get("OPENAI_API_KEY")
-    if not token or not openai_api_key:
+    missing = [
+        name
+        for name, value in [("GITHUB_PAT", token), ("OPENAI_API_KEY", openai_api_key)]
+        if not value
+    ]
+    if missing:
         raise HTTPException(
-            status_code=500, detail="GITHUB_PAT or OPENAI_API_KEY is not configured"
+            status_code=500, detail=f"{', '.join(missing)} environment variable(s) not configured"
         )
 
     openai_client = OpenAI(api_key=openai_api_key)
