@@ -8,11 +8,11 @@ Agent that reviews GitHub pull requests against a repo's style guide and flags n
 uv sync
 ```
 
-Then set up a GitHub PAT scoped to the Target Repo you want to review (see `docs/agents/` for the workflow used to provision it). It's read from the `GITHUB_PAT` environment variable, or from a `.env` file in this directory.
+Then set up a GitHub PAT scoped to the Target Repo you want to review (see `docs/agents/` for the workflow used to provision it), and an OpenAI API key. Both are read from the `GITHUB_PAT` and `OPENAI_API_KEY` environment variables, or from a `.env` file in this directory.
 
 ## Usage
 
-Print a pull request's diff:
+Review a pull request's diff against the Target Repo's Style Guide (`.github/REVIEW_GUIDE.md`) and print the resulting findings, one per line as JSON:
 
 ```bash
 uv run code-review-agent <owner>/<repo> <pr-number>

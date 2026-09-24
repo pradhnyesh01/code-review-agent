@@ -4,8 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Ticket #2 (fetch and print a PR diff via CLI) is implemented. The project is a `uv`-managed Python package
-at `src/code_review_agent/`, with a `code-review-agent` console script entry point.
+Tickets #2 (fetch and print a PR diff via CLI) and #3 (generate structured style findings from a diff,
+no posting) are implemented. The project is a `uv`-managed Python package at `src/code_review_agent/`,
+with a `code-review-agent` console script entry point. The CLI now fetches a PR's diff and the Target
+Repo's Style Guide (`.github/REVIEW_GUIDE.md`), sends both to OpenAI via Structured Outputs, and prints
+the resulting `Finding`s — nothing is posted to GitHub yet.
 
 Build/test commands:
 
@@ -67,7 +70,7 @@ Post review comments back via GitHub API
   debuggable.
 - **No GitHub App / OAuth for v1** — a fine-grained PAT scoped to a single test repo is sufficient.
 - **No database for v1** — each PR review is stateless.
-- LLM backend is either Anthropic/OpenAI (pay-as-you-go) or a local Ollama model — not yet decided.
+- LLM backend is OpenAI, via Structured Outputs (see `docs/adr/0001-openai-for-llm-backend.md`).
 
 ## Out of scope (v1)
 
