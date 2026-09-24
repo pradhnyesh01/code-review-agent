@@ -6,8 +6,8 @@ import httpx
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from code_review_agent.github import fetch_pr_diff, fetch_style_guide, post_review
-from code_review_agent.review import generate_style_findings
+from code_review_agent.github import post_review
+from code_review_agent.pipeline import generate_findings_for_pr
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -46,10 +46,7 @@ def main(argv: list[str] | None = None) -> int:
     openai_client = OpenAI(api_key=openai_api_key)
 
     with httpx.Client(headers={"Authorization": f"Bearer {token}"}) as client:
-        diff = fetch_pr_diff(client, owner, repo, args.pr_number)
-        style_guide = fetch_style_guide(client, owner, repo)
-
-        findings = generate_style_findings(openai_client, diff, style_guide)
+        findings = generate_findings_for_pr(client, openai_client, owner, repo, args.pr_number)
         for finding in findings:
             print(finding.model_dump_json())
 

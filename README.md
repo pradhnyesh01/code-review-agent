@@ -18,6 +18,30 @@ Review a pull request's diff against the Target Repo's Style Guide (`.github/REV
 uv run code-review-agent <owner>/<repo> <pr-number>
 ```
 
+## Webhook
+
+`src/code_review_agent/webhook.py` wraps the same pipeline in a FastAPI `/webhook` endpoint, so opening
+a PR on the Target Repo triggers a review automatically instead of running the CLI by hand.
+
+Set `GITHUB_WEBHOOK_SECRET` (in addition to `GITHUB_PAT` and `OPENAI_API_KEY`) to the secret configured
+on the GitHub webhook — every request's `X-Hub-Signature-256` header is verified against it via
+HMAC-SHA256, and anything with a missing or invalid signature is rejected with `401`. Only `pull_request`
+events with `action` of `opened` or `reopened` trigger a review; everything else (`synchronize`, `ping`,
+other event types) returns `200` with `{"status": "ignored"}` and does no work.
+
+Run it locally with:
+
+```bash
+uv run uvicorn code_review_agent.webhook:app --reload
+```
+
+To deploy: push this repo to Railway (or Render) — the included `Procfile` gives it a start command —
+set `GITHUB_PAT`, `OPENAI_API_KEY`, and `GITHUB_WEBHOOK_SECRET` as environment variables on the deployed
+service, then register a webhook on the Demo Repo (Settings → Webhooks) pointing at
+`https://<deployed-url>/webhook`, content type `application/json`, with the same secret, subscribed to
+"Pull requests" events. These steps are manual (they need Railway/GitHub account access this agent
+doesn't have) — the code and local test coverage are what's automatable.
+
 ## Development
 
 ```bash

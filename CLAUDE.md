@@ -11,6 +11,13 @@ point. The CLI fetches a PR's diff and the Target Repo's Style Guide (`.github/R
 both to OpenAI via Structured Outputs, and posts the resulting `Finding`s back to GitHub as one batched
 `PullRequestReview` (event always `COMMENT` — see `docs/adr/0002-review-verdict-always-comment.md`).
 
+Ticket #5 (wrap the pipeline in a FastAPI webhook) is code-complete: `src/code_review_agent/webhook.py`
+exposes `/webhook`, verifies `X-Hub-Signature-256` via HMAC-SHA256 against `GITHUB_WEBHOOK_SECRET`, and
+runs the same fetch → generate → post pipeline only for `pull_request` events with `action` `opened` or
+`reopened`. The remaining acceptance criteria — deploying to Railway, registering the webhook on the
+Demo Repo, and confirming an end-to-end run on a real PR — are manual steps requiring account access
+this agent doesn't have; see the Webhook section of `README.md` for the exact steps.
+
 Build/test commands:
 
 ```bash

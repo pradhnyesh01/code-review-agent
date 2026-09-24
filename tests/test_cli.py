@@ -33,7 +33,7 @@ def test_main_posts_review_for_style_findings_on_valid_pr(capsys, monkeypatch):
         return findings
 
     monkeypatch.setattr(
-        "code_review_agent.cli.generate_style_findings", fake_generate_style_findings
+        "code_review_agent.pipeline.generate_style_findings", fake_generate_style_findings
     )
 
     exit_code = main(["octocat/hello-world", "42"])
@@ -63,7 +63,7 @@ def test_main_posts_review_with_no_comments_when_no_findings(capsys, monkeypatch
     ).mock(return_value=httpx.Response(200, json={"id": 2, "html_url": "https://example.com/review/2"}))
 
     monkeypatch.setattr(
-        "code_review_agent.cli.generate_style_findings", lambda client, diff, style_guide: []
+        "code_review_agent.pipeline.generate_style_findings", lambda client, diff, style_guide: []
     )
 
     exit_code = main(["octocat/hello-world", "42"])
