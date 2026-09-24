@@ -18,6 +18,13 @@ runs the same fetch → generate → post pipeline only for `pull_request` event
 Demo Repo, and confirming an end-to-end run on a real PR — are manual steps requiring account access
 this agent doesn't have; see the Webhook section of `README.md` for the exact steps.
 
+Ticket #6 (Python test-coverage check as a second Finding pass) is implemented:
+`src/code_review_agent/test_coverage.py` parses the raw diff directly (no LLM call) for hunks that add a
+new top-level function or method (`+def ...`) in a non-test `.py` file, and only emits a
+`category: test-coverage`, `severity: blocker` `Finding` when no `test_*.py`/`*_test.py` file appears
+anywhere in the same diff. `pipeline.py` runs it alongside `generate_style_findings` so both land in the
+same posted Review.
+
 Build/test commands:
 
 ```bash
