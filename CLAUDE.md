@@ -4,9 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-This repository currently contains only [plan.md](plan.md) — no code has been written yet, and it is not
-initialized as a git repo. There are no build/lint/test commands to document because nothing has been
-scaffolded. Once code exists, this file should be updated with actual commands and architecture notes.
+Ticket #2 (fetch and print a PR diff via CLI) is implemented. The project is a `uv`-managed Python package
+at `src/code_review_agent/`, with a `code-review-agent` console script entry point.
+
+Build/test commands:
+
+```bash
+uv sync                      # install dependencies
+uv run pytest                # run tests
+uv run pyright src tests     # typecheck
+uv run code-review-agent <owner>/<repo> <pr-number>   # run the CLI
+```
+
+See the open issues on this repo (starting from #1) for the remaining build order.
 
 ## Goal
 
