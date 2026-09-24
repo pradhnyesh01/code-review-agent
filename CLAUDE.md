@@ -11,19 +11,25 @@ point. The CLI fetches a PR's diff and the Target Repo's Style Guide (`.github/R
 both to OpenAI via Structured Outputs, and posts the resulting `Finding`s back to GitHub as one batched
 `PullRequestReview` (event always `COMMENT` — see `docs/adr/0002-review-verdict-always-comment.md`).
 
-Ticket #5 (wrap the pipeline in a FastAPI webhook) is code-complete: `src/code_review_agent/webhook.py`
-exposes `/webhook`, verifies `X-Hub-Signature-256` via HMAC-SHA256 against `GITHUB_WEBHOOK_SECRET`, and
-runs the same fetch → generate → post pipeline only for `pull_request` events with `action` `opened` or
-`reopened`. The remaining acceptance criteria — deploying to Railway, registering the webhook on the
-Demo Repo, and confirming an end-to-end run on a real PR — are manual steps requiring account access
-this agent doesn't have; see the Webhook section of `README.md` for the exact steps.
+Ticket #5 (wrap the pipeline in a FastAPI webhook) is fully done, deployment included:
+`src/code_review_agent/webhook.py` exposes `/webhook`, verifies `X-Hub-Signature-256` via HMAC-SHA256
+against `GITHUB_WEBHOOK_SECRET`, and runs the same fetch → generate → post pipeline only for
+`pull_request` events with `action` `opened` or `reopened`. It's deployed on Railway
+(`https://code-review-agent-production-f3f0.up.railway.app`), the webhook is registered on the Demo Repo
+(`pradhnyesh01/code-review-agent-demo`), and an end-to-end run against real PRs has been confirmed —
+see the Webhook section of `README.md` for the deploy steps.
 
-Ticket #6 (Python test-coverage check as a second Finding pass) is implemented:
+Ticket #6 (Python test-coverage check as a second Finding pass) is implemented and verified live:
 `src/code_review_agent/test_coverage.py` parses the raw diff directly (no LLM call) for hunks that add a
 new top-level function or method (`+def ...`) in a non-test `.py` file, and only emits a
 `category: test-coverage`, `severity: blocker` `Finding` when no `test_*.py`/`*_test.py` file appears
 anywhere in the same diff. `pipeline.py` runs it alongside `generate_style_findings` so both land in the
-same posted Review.
+same posted Review; confirmed on a real Demo Repo PR after deploying.
+
+Note for future deploys: Railway's dashboard "Redeploy" re-runs the *same* commit/image already live —
+it does not pull `main`'s latest commit. To ship a new commit, either connect a fresh deploy from
+GitHub's latest commit in the dashboard, or run `railway up` from the repo root (after `railway link`)
+to deploy the local checkout directly.
 
 Build/test commands:
 

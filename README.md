@@ -35,12 +35,17 @@ Run it locally with:
 uv run uvicorn code_review_agent.webhook:app --reload
 ```
 
-To deploy: push this repo to Railway (or Render) — the included `Procfile` gives it a start command —
-set `GITHUB_PAT`, `OPENAI_API_KEY`, and `GITHUB_WEBHOOK_SECRET` as environment variables on the deployed
-service, then register a webhook on the Demo Repo (Settings → Webhooks) pointing at
-`https://<deployed-url>/webhook`, content type `application/json`, with the same secret, subscribed to
-"Pull requests" events. These steps are manual (they need Railway/GitHub account access this agent
-doesn't have) — the code and local test coverage are what's automatable.
+Deployed on Railway at `https://code-review-agent-production-f3f0.up.railway.app`, with the webhook
+registered on the Demo Repo (`pradhnyesh01/code-review-agent-demo`, Settings → Webhooks →
+`https://code-review-agent-production-f3f0.up.railway.app/webhook`, content type `application/json`,
+subscribed to "Pull requests" events). Verified end-to-end against real PRs on the Demo Repo, including
+both the style-guide and test-coverage Finding passes.
+
+To deploy elsewhere: push this repo to Railway (or Render) — the included `Procfile` gives it a start
+command — and set `GITHUB_PAT`, `OPENAI_API_KEY`, and `GITHUB_WEBHOOK_SECRET` as environment variables on
+the deployed service. Note: Railway's dashboard "Redeploy" re-runs the exact commit/image already live,
+not `main`'s latest commit — to ship a new commit, trigger a fresh deploy from GitHub in the dashboard,
+or run `railway up` (after `railway link`) to deploy the local checkout directly.
 
 ## Development
 
