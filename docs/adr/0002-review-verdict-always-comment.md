@@ -1,0 +1,3 @@
+# Review verdict is always COMMENT, never REQUEST_CHANGES
+
+Every Review is submitted with the GitHub event `COMMENT`, regardless of whether any Finding has `severity: blocker`. This is worth recording because the `blocker` severity level exists and a reader would reasonably expect it to escalate the review event — it deliberately doesn't. The agent runs against other people's repos for a demo; auto-blocking a merge on an LLM's judgment has a much larger blast radius than leaving comments, and a false-positive `blocker` shouldn't be able to stop someone from merging. `REQUEST_CHANGES` on severity is a plausible v2 differentiator once the heuristics are trusted, not a v1 default.

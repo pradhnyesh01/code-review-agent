@@ -1,0 +1,3 @@
+# Use the OpenAI API as the LLM backend
+
+plan.md left the LLM backend undecided between Anthropic, OpenAI, and a local Ollama model. We chose OpenAI. This is worth recording because the project is built and documented via Claude Code, so a reader would reasonably expect Anthropic — the choice isn't implied by anything else in the repo. Ollama was rejected because "real API integrations" is a stated resume goal; a local model would undercut that framing. The choice determines the structured-output mechanism (OpenAI's native Structured Outputs / function-calling), which downstream code depends on.
