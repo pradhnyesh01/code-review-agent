@@ -6,7 +6,7 @@ import httpx
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from code_review_agent.github import fetch_pr_diff, fetch_style_guide
+from code_review_agent.github import fetch_pr_diff, fetch_style_guide, post_review
 from code_review_agent.review import generate_style_findings
 
 
@@ -43,15 +43,19 @@ def main(argv: list[str] | None = None) -> int:
     if not openai_api_key:
         return 2
 
+    openai_client = OpenAI(api_key=openai_api_key)
+
     with httpx.Client(headers={"Authorization": f"Bearer {token}"}) as client:
         diff = fetch_pr_diff(client, owner, repo, args.pr_number)
         style_guide = fetch_style_guide(client, owner, repo)
 
-    openai_client = OpenAI(api_key=openai_api_key)
-    findings = generate_style_findings(openai_client, diff, style_guide)
+        findings = generate_style_findings(openai_client, diff, style_guide)
+        for finding in findings:
+            print(finding.model_dump_json())
 
-    for finding in findings:
-        print(finding.model_dump_json())
+        review = post_review(client, owner, repo, args.pr_number, findings)
+
+    print(f"Posted review: {review.get('html_url', review)}")
     return 0
 
 

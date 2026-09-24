@@ -1,8 +1,11 @@
+import json
+
 import httpx
 import pytest
 import respx
 
-from code_review_agent.github import fetch_pr_diff, fetch_style_guide
+from code_review_agent.findings import Finding
+from code_review_agent.github import fetch_pr_diff, fetch_style_guide, post_review
 
 
 @respx.mock
@@ -61,3 +64,66 @@ def test_fetch_style_guide_raises_when_missing():
     with httpx.Client() as client:
         with pytest.raises(httpx.HTTPStatusError):
             fetch_style_guide(client, "octocat", "hello-world")
+
+
+@respx.mock
+def test_post_review_posts_one_comment_per_finding_with_event_comment():
+    findings = [
+        Finding(file="foo.py", line=3, comment="use snake_case", category="style", severity="warning"),
+        Finding(file="bar.py", line=10, comment="missing docstring", category="style", severity="nit"),
+    ]
+    route = respx.post(
+        "https://api.github.com/repos/octocat/hello-world/pulls/42/reviews"
+    ).mock(return_value=httpx.Response(200, json={"id": 1, "html_url": "https://github.com/octocat/hello-world/pull/42#pullrequestreview-1"}))
+
+    with httpx.Client() as client:
+        result = post_review(client, "octocat", "hello-world", 42, findings)
+
+    sent_body = json.loads(route.calls.last.request.content)
+    assert sent_body["event"] == "COMMENT"
+    assert sent_body["comments"] == [
+        {"path": "foo.py", "line": 3, "body": "use snake_case"},
+        {"path": "bar.py", "line": 10, "body": "missing docstring"},
+    ]
+    assert result["html_url"].endswith("#pullrequestreview-1")
+
+
+@respx.mock
+def test_post_review_always_uses_event_comment_regardless_of_severity():
+    findings = [
+        Finding(file="foo.py", line=3, comment="missing tests", category="test-coverage", severity="blocker"),
+    ]
+    route = respx.post(
+        "https://api.github.com/repos/octocat/hello-world/pulls/42/reviews"
+    ).mock(return_value=httpx.Response(200, json={"id": 2}))
+
+    with httpx.Client() as client:
+        post_review(client, "octocat", "hello-world", 42, findings)
+
+    sent_body = json.loads(route.calls.last.request.content)
+    assert sent_body["event"] == "COMMENT"
+
+
+@respx.mock
+def test_post_review_posts_empty_comments_when_no_findings():
+    route = respx.post(
+        "https://api.github.com/repos/octocat/hello-world/pulls/42/reviews"
+    ).mock(return_value=httpx.Response(200, json={"id": 3}))
+
+    with httpx.Client() as client:
+        post_review(client, "octocat", "hello-world", 42, [])
+
+    sent_body = json.loads(route.calls.last.request.content)
+    assert sent_body["comments"] == []
+    assert sent_body["event"] == "COMMENT"
+
+
+@respx.mock
+def test_post_review_raises_on_error():
+    respx.post("https://api.github.com/repos/octocat/hello-world/pulls/42/reviews").mock(
+        return_value=httpx.Response(422, json={"message": "Validation Failed"})
+    )
+
+    with httpx.Client() as client:
+        with pytest.raises(httpx.HTTPStatusError):
+            post_review(client, "octocat", "hello-world", 42, [])

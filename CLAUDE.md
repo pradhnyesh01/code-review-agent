@@ -4,11 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Tickets #2 (fetch and print a PR diff via CLI) and #3 (generate structured style findings from a diff,
-no posting) are implemented. The project is a `uv`-managed Python package at `src/code_review_agent/`,
-with a `code-review-agent` console script entry point. The CLI now fetches a PR's diff and the Target
-Repo's Style Guide (`.github/REVIEW_GUIDE.md`), sends both to OpenAI via Structured Outputs, and prints
-the resulting `Finding`s — nothing is posted to GitHub yet.
+Tickets #2 (fetch and print a PR diff via CLI), #3 (generate structured style findings from a diff, no
+posting), and #4 (post findings as a single GitHub Review) are implemented. The project is a
+`uv`-managed Python package at `src/code_review_agent/`, with a `code-review-agent` console script entry
+point. The CLI fetches a PR's diff and the Target Repo's Style Guide (`.github/REVIEW_GUIDE.md`), sends
+both to OpenAI via Structured Outputs, and posts the resulting `Finding`s back to GitHub as one batched
+`PullRequestReview` (event always `COMMENT` — see `docs/adr/0002-review-verdict-always-comment.md`).
 
 Build/test commands:
 

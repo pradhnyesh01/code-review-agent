@@ -1,3 +1,5 @@
+import json
+
 import httpx
 import respx
 
@@ -6,7 +8,7 @@ from code_review_agent.findings import Finding
 
 
 @respx.mock
-def test_main_prints_style_findings_for_valid_pr(capsys, monkeypatch):
+def test_main_posts_review_for_style_findings_on_valid_pr(capsys, monkeypatch):
     monkeypatch.setenv("GITHUB_PAT", "test-token")
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     diff_text = "diff --git a/foo.py b/foo.py\n+added line\n"
@@ -17,6 +19,10 @@ def test_main_prints_style_findings_for_valid_pr(capsys, monkeypatch):
     respx.get(
         "https://api.github.com/repos/octocat/hello-world/contents/.github/REVIEW_GUIDE.md"
     ).mock(return_value=httpx.Response(200, text=guide_text))
+    review_url = "https://github.com/octocat/hello-world/pull/42#pullrequestreview-1"
+    post_route = respx.post(
+        "https://api.github.com/repos/octocat/hello-world/pulls/42/reviews"
+    ).mock(return_value=httpx.Response(200, json={"id": 1, "html_url": review_url}))
 
     findings = [Finding(file="foo.py", line=1, comment="use snake_case", category="style", severity="warning")]
     recorded_args = {}
@@ -34,7 +40,38 @@ def test_main_prints_style_findings_for_valid_pr(capsys, monkeypatch):
 
     assert exit_code == 0
     assert recorded_args == {"diff": diff_text, "style_guide": guide_text}
-    assert capsys.readouterr().out == findings[0].model_dump_json() + "\n"
+    sent_body = json.loads(post_route.calls.last.request.content)
+    assert sent_body["event"] == "COMMENT"
+    assert sent_body["comments"] == [{"path": "foo.py", "line": 1, "body": "use snake_case"}]
+    output = capsys.readouterr().out
+    assert findings[0].model_dump_json() in output
+    assert review_url in output
+
+
+@respx.mock
+def test_main_posts_review_with_no_comments_when_no_findings(capsys, monkeypatch):
+    monkeypatch.setenv("GITHUB_PAT", "test-token")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    respx.get("https://api.github.com/repos/octocat/hello-world/pulls/42").mock(
+        return_value=httpx.Response(200, text="diff --git a/foo.py b/foo.py\n")
+    )
+    respx.get(
+        "https://api.github.com/repos/octocat/hello-world/contents/.github/REVIEW_GUIDE.md"
+    ).mock(return_value=httpx.Response(200, text="# Style Guide\n"))
+    post_route = respx.post(
+        "https://api.github.com/repos/octocat/hello-world/pulls/42/reviews"
+    ).mock(return_value=httpx.Response(200, json={"id": 2, "html_url": "https://example.com/review/2"}))
+
+    monkeypatch.setattr(
+        "code_review_agent.cli.generate_style_findings", lambda client, diff, style_guide: []
+    )
+
+    exit_code = main(["octocat/hello-world", "42"])
+
+    assert exit_code == 0
+    sent_body = json.loads(post_route.calls.last.request.content)
+    assert sent_body["comments"] == []
+    assert sent_body["event"] == "COMMENT"
 
 
 def test_main_errors_when_github_pat_is_unset(capsys, monkeypatch):
