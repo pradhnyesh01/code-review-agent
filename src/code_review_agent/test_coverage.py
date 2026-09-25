@@ -1,12 +1,13 @@
 import fnmatch
 import re
+from itertools import groupby
 from posixpath import basename
 
+from code_review_agent.diff_parsing import iter_added_lines
 from code_review_agent.findings import Finding
 
 TEST_FILE_PATTERNS = ("test_*.py", "*_test.py")
-_DEF_RE = re.compile(r"^\+\s*(async\s+)?def\s+\w+\s*\(")
-_HUNK_HEADER_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
+_DEF_RE = re.compile(r"^\s*(async\s+)?def\s+\w+\s*\(")
 COMMENT = (
     "This hunk adds a new function/method with no corresponding test file "
     "changes in this diff."
@@ -37,65 +38,27 @@ def generate_test_coverage_findings(diff: str) -> list[Finding]:
         return []
 
     findings: list[Finding] = []
-    current_file: str | None = None
-    current_line_num: int | None = None
-    hunk_first_new_def_line: int | None = None
-
-    def flush_hunk() -> None:
-        nonlocal hunk_first_new_def_line
-        if hunk_first_new_def_line is not None and current_file is not None:
+    target_lines = (
+        added_line
+        for added_line in iter_added_lines(diff)
+        if added_line.file.endswith(".py") and not _is_test_file(added_line.file)
+    )
+    for (file, _hunk_index), hunk_lines in groupby(
+        target_lines, key=lambda added_line: (added_line.file, added_line.hunk_index)
+    ):
+        first_def_line = next(
+            (line.line_num for line in hunk_lines if _DEF_RE.match(line.content)),
+            None,
+        )
+        if first_def_line is not None:
             findings.append(
                 Finding(
-                    file=current_file,
-                    line=hunk_first_new_def_line,
+                    file=file,
+                    line=first_def_line,
                     comment=COMMENT,
                     category="test-coverage",
                     severity="blocker",
                 )
             )
-        hunk_first_new_def_line = None
 
-    for line in diff.splitlines():
-        if line.startswith("diff --git "):
-            flush_hunk()
-            current_file = None
-            current_line_num = None
-            continue
-
-        if line.startswith("+++ "):
-            flush_hunk()
-            path = line[len("+++ ") :]
-            if path == "/dev/null":
-                current_file = None
-            else:
-                current_file = path[2:] if path.startswith("b/") else path
-            current_line_num = None
-            continue
-
-        header_match = _HUNK_HEADER_RE.match(line)
-        if header_match:
-            flush_hunk()
-            current_line_num = int(header_match.group(1))
-            continue
-
-        is_python_target = (
-            current_file is not None
-            and current_file.endswith(".py")
-            and not _is_test_file(current_file)
-        )
-        if not is_python_target or current_line_num is None:
-            continue
-
-        if line.startswith("+"):
-            if hunk_first_new_def_line is None and _DEF_RE.match(line):
-                hunk_first_new_def_line = current_line_num
-            current_line_num += 1
-        elif line.startswith("-"):
-            pass
-        elif line.startswith("\\"):
-            pass
-        else:
-            current_line_num += 1
-
-    flush_hunk()
     return findings
